@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { nanoid } from 'nanoid';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { PlusCircle, List, Clock, CheckCircle, XCircle, LogOut } from 'lucide-react';
+import { PlusCircle, List, Clock, CheckCircle, XCircle, LogOut, Trash2 } from 'lucide-react';
 
 export default function AdminPage() {
   const [sessions, setSessions] = useState<any[]>([]);
@@ -57,19 +57,13 @@ export default function AdminPage() {
     setCreating(true);
     const code = classCode || nanoid(6).toUpperCase();
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('sessions')
-      .insert([
-        { 
-          name: sessionName, 
-          class_code: code,
-          is_active: true 
-        }
-      ])
+      .insert([{ name: sessionName, class_code: code, is_active: true }])
       .select();
 
     if (error) {
-      alert('Error creating session: ' + error.message);
+      alert('Error: ' + error.message);
     } else {
       setSessionName('');
       setClassCode('');
@@ -91,114 +85,108 @@ export default function AdminPage() {
     }
   }
 
+  async function deleteSession(id: string) {
+    if (!confirm('TERMINATE_PROTOCOL: Are you sure you want to permanently delete this session and all associated signals?')) return;
+    
+    const { error } = await supabase
+      .from('sessions')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      alert('Deletion_Error: ' + error.message);
+    } else {
+      fetchSessions();
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-black p-8">
+    <div className="min-h-screen bg-black p-8 text-xs font-body">
       <div className="max-w-4xl mx-auto">
-        <header className="mb-12 flex justify-between items-center liquid-glass p-6 rounded-2xl border border-white/10">
-          <div>
-            <h1 className="text-3xl font-black metallic-text uppercase tracking-tighter">CONTROL CENTER</h1>
-            {user && <p className="text-[10px] text-gray-500 font-body uppercase tracking-[0.2em] mt-1">{user.email}</p>}
-          </div>
-          <div className="flex gap-6 items-center">
-            <Link href="/" className="text-gray-500 hover:text-white text-[10px] uppercase tracking-widest transition-colors font-body">Root</Link>
+        <header className="mb-10 flex justify-between items-center border-b border-white/10 pb-6">
+          <h1 className="text-xl font-bold tracking-widest uppercase">Dashboard</h1>
+          <div className="flex gap-4 items-center">
+            {user && <span className="text-gray-600 hidden md:inline">{user.email}</span>}
             <button 
               onClick={handleLogout}
-              className="flex items-center gap-2 bg-red-950/20 border border-red-900/30 px-4 py-2 rounded-lg text-[10px] font-black text-red-500 hover:bg-red-900/40 transition-all uppercase tracking-widest"
+              className="text-gray-500 hover:text-white uppercase tracking-widest transition-colors font-bold"
             >
-              <LogOut className="w-3 h-3" /> Terminate
+              Logout
             </button>
           </div>
         </header>
 
-        <section className="liquid-glass rounded-2xl border border-white/10 p-8 mb-12 shadow-2xl">
-          <h2 className="text-lg font-black mb-6 flex items-center gap-3 uppercase tracking-wider metallic-text">
-            <PlusCircle className="w-5 h-5 text-blue-400" />
-            Initialize New Session
+        <section className="liquid-glass p-6 mb-10 border border-white/10">
+          <h2 className="text-[10px] font-bold mb-6 uppercase tracking-widest text-white flex items-center gap-2">
+            <PlusCircle className="w-3 h-3" /> New Session
           </h2>
-          <form onSubmit={createSession} className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-1 space-y-2">
-              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-1">Session ID/Name</label>
-              <input
-                type="text"
-                value={sessionName}
-                onChange={(e) => setSessionName(e.target.value)}
-                placeholder="e.g. ALPHA-STRIKE"
-                className="w-full bg-white/5 border border-white/10 p-3 rounded-xl focus:bg-white/10 focus:border-white/20 outline-none text-white font-body transition-all"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-1">Override Code</label>
-              <input
-                type="text"
-                value={classCode}
-                onChange={(e) => setClassCode(e.target.value)}
-                placeholder="Auto-Gen"
-                className="w-full bg-white/5 border border-white/10 p-3 rounded-xl focus:bg-white/10 focus:border-white/20 outline-none text-white font-body transition-all"
-              />
-            </div>
-            <div className="flex items-end">
-              <button
-                type="submit"
-                disabled={creating}
-                className="w-full btn-metallic text-white p-3 rounded-xl font-black uppercase tracking-widest text-xs hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 transition-all"
-              >
-                {creating ? 'DEPLOYING...' : 'START DEPLOYMENT'}
-              </button>
-            </div>
+          <form onSubmit={createSession} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <input
+              type="text"
+              value={sessionName}
+              onChange={(e) => setSessionName(e.target.value)}
+              placeholder="Session Name"
+              className="p-3 bg-black border border-white/10 text-white focus:border-white/30 outline-none"
+              required
+            />
+            <input
+              type="text"
+              value={classCode}
+              onChange={(e) => setClassCode(e.target.value)}
+              placeholder="Class Code (Optional)"
+              className="p-3 bg-black border border-white/10 text-white focus:border-white/30 outline-none"
+            />
+            <button
+              type="submit"
+              disabled={creating}
+              className="btn-metallic p-3 uppercase tracking-widest font-bold"
+            >
+              {creating ? 'Creating...' : 'Create'}
+            </button>
           </form>
         </section>
 
         <section>
-          <h2 className="text-lg font-black mb-6 flex items-center gap-3 uppercase tracking-wider metallic-text">
-            <List className="w-5 h-5 text-gray-400" />
-            Active Deployments
+          <h2 className="text-[10px] font-bold mb-6 uppercase tracking-widest text-gray-500 flex items-center gap-2">
+            <List className="w-3 h-3" /> Sessions
           </h2>
           {loading ? (
-            <div className="flex items-center gap-3 text-gray-500 font-body text-sm animate-pulse">
-              <Clock className="w-4 h-4 animate-spin" /> SYNCHRONIZING DATA...
-            </div>
+            <div className="text-gray-700 animate-pulse font-bold">Syncing...</div>
           ) : sessions.length === 0 ? (
-            <div className="liquid-glass rounded-2xl border border-white/5 p-16 text-center text-gray-600 font-body uppercase tracking-[0.2em] text-xs">
-              No active deployments found.
-            </div>
+            <div className="p-12 text-center text-gray-600 border border-white/5 uppercase tracking-widest">No sessions found.</div>
           ) : (
-            <div className="grid gap-6">
+            <div className="grid gap-3">
               {sessions.map((session) => (
-                <div key={session.id} className="liquid-glass rounded-2xl border border-white/10 p-6 flex items-center justify-between hover:border-white/20 transition-all group">
+                <div key={session.id} className="liquid-glass p-5 flex items-center justify-between border border-white/10 hover:border-white/20 transition-all">
                   <div>
-                    <h3 className="text-lg font-black tracking-tight uppercase group-hover:metallic-text transition-all">{session.name}</h3>
-                    <div className="flex items-center gap-6 text-[10px] text-gray-500 mt-2 font-body uppercase tracking-widest">
-                      <span className="flex items-center gap-2">
-                        <Clock className="w-3 h-3 text-gray-600" />
-                        {new Date(session.created_at).toLocaleDateString()}
-                      </span>
-                      <span className="bg-white/5 px-2 py-1 rounded-lg border border-white/5 font-mono text-xs text-gray-400">
-                        KEY: {session.class_code}
-                      </span>
-                    </div>
+                    <h3 className="font-bold uppercase tracking-tight text-white">{session.name}</h3>
+                    <p className="text-[9px] text-gray-600 mt-1 uppercase tracking-widest font-bold">
+                      Code: <span className="text-gray-400">{session.class_code}</span> | 
+                      Created: {new Date(session.created_at).toLocaleDateString()}
+                    </p>
                   </div>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-6">
                     <button
                       onClick={() => toggleSession(session.id, session.is_active)}
-                      className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border transition-all ${
-                        session.is_active 
-                          ? 'bg-green-950/20 border-green-900/30 text-green-500 hover:bg-green-900/40' 
-                          : 'bg-red-950/20 border-red-900/30 text-red-500 hover:bg-red-900/40'
+                      className={`text-[9px] font-bold uppercase tracking-widest transition-colors ${
+                        session.is_active ? 'text-green-900 hover:text-green-500' : 'text-red-900 hover:text-red-500'
                       }`}
                     >
-                      {session.is_active ? (
-                        <><CheckCircle className="w-3 h-3" /> Online</>
-                      ) : (
-                        <><XCircle className="w-3 h-3" /> Offline</>
-                      )}
+                      {session.is_active ? 'Active' : 'Closed'}
                     </button>
                     <Link
                       href={`/admin/${session.id}`}
-                      className="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105"
+                      className="text-white hover:text-gray-400 uppercase tracking-widest font-bold"
                     >
-                      Interface
+                      View
                     </Link>
+                    <button 
+                      onClick={() => deleteSession(session.id)}
+                      className="text-red-900 hover:text-red-600 transition-colors p-1"
+                      title="Delete Session"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               ))}

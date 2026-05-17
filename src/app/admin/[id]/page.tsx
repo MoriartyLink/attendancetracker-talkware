@@ -21,164 +21,122 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
         router.push('/login');
         return;
       }
-
-      if (typeof window !== 'undefined') {
-        setBaseUrl(window.location.origin);
-      }
+      if (typeof window !== 'undefined') setBaseUrl(window.location.origin);
       fetchSessionDetails();
     };
 
     initSession();
 
-    const channel = supabase
-      .channel(`session-${id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'attendance_records',
-          filter: `session_id=eq.${id}`,
-        },
-        (payload) => {
-          setRecords((prev) => [payload.new, ...prev]);
-        }
-      )
+    const channel = supabase.channel(`session-${id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'attendance_records', filter: `session_id=eq.${id}` }, 
+        (payload) => setRecords((prev) => [payload.new, ...prev]))
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [id, router]);
 
   async function fetchSessionDetails() {
     setLoading(true);
-    const { data: sessionData, error: sessionError } = await supabase
-      .from('sessions')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (sessionError) {
-      console.error('Error fetching session:', sessionError);
-    } else {
+    const { data: sessionData } = await supabase.from('sessions').select('*').eq('id', id).single();
+    if (sessionData) {
       setSession(sessionData);
-      
-      const { data: recordsData, error: recordsError } = await supabase
-        .from('attendance_records')
-        .select('*')
-        .eq('session_id', id)
-        .order('created_at', { ascending: false });
-
-      if (recordsError) {
-        console.error('Error fetching records:', recordsError);
-      } else {
-        setRecords(recordsData || []);
-      }
+      const { data: recordsData } = await supabase.from('attendance_records').select('*').eq('session_id', id).order('created_at', { ascending: false });
+      setRecords(recordsData || []);
     }
     setLoading(false);
   }
 
-  if (loading) return <div className="p-8 text-center">Loading...</div>;
-  if (!session) return <div className="p-8 text-center text-red-600 font-bold">Session not found</div>;
+  async function deleteSession() {
+    if (!confirm('TERMINATE_PROTOCOL: Are you sure you want to permanently delete this session and all captured signal data?')) return;
+    const { error } = await supabase.from('sessions').delete().eq('id', id);
+    if (error) alert('Error: ' + error.message);
+    else router.push('/admin');
+  }
+
+  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-gray-500 font-body uppercase text-[9px] tracking-widest">Syncing...</div>;
+  if (!session) return <div className="min-h-screen bg-black flex items-center justify-center text-red-900 font-bold uppercase text-[9px]">Offline</div>;
 
   const checkInUrl = `${baseUrl}/check-in/${id}`;
+  const zoomOnlyUrl = `${checkInUrl}?v=zoom`;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-black p-6 text-xs font-body">
       <div className="max-w-6xl mx-auto">
-        <header className="mb-8 flex items-center justify-between">
-          <Link href="/admin" className="flex items-center gap-1 text-blue-600 hover:underline">
-            <ChevronLeft className="w-4 h-4" /> Back to Sessions
-          </Link>
-          <div className="text-right">
-            <h1 className="text-2xl font-bold text-gray-900">{session.name}</h1>
-            <p className="text-gray-500 font-mono text-sm">Session ID: {id}</p>
+        <header className="mb-8 flex items-center justify-between border-b border-white/10 pb-4">
+          <div className="flex gap-6 items-center">
+            <Link href="/admin" className="text-[9px] uppercase tracking-widest text-gray-500 hover:text-white font-bold flex items-center gap-1">
+              <ChevronLeft className="w-3 h-3" /> Back
+            </Link>
+            <button 
+              onClick={deleteSession}
+              className="text-[9px] uppercase tracking-widest text-red-900 hover:text-red-500 font-bold"
+            >
+              Delete_Session
+            </button>
           </div>
+          <h1 className="text-lg font-bold uppercase tracking-widest">{session.name}</h1>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-1 space-y-6">
-            <div className="bg-white rounded-xl shadow-sm border p-6 flex flex-col items-center">
-              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <QrCode className="w-5 h-5 text-blue-500" />
-                QR Code for Attendance
-              </h2>
-              <div className="bg-white p-4 border rounded-lg shadow-inner">
-                <QRCodeSVG value={checkInUrl} size={256} />
+            <div className="bg-black border border-white/10 p-8 flex flex-col items-center shadow-2xl">
+              <div className="bg-white p-4 mb-8 rounded shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+                <QRCodeSVG value={checkInUrl} size={200} bgColor="transparent" fgColor="#000000" />
               </div>
-              <div className="mt-6 w-full space-y-4">
-                <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg text-center">
-                  <p className="text-sm text-blue-800 font-medium mb-1">SECRET CLASS CODE</p>
-                  <p className="text-3xl font-bold tracking-widest text-blue-900">{session.class_code}</p>
-                  <p className="text-xs text-blue-600 mt-2 italic">Share this code in class message</p>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Check-in URL</label>
-                  <div className="flex gap-2">
-                    <input 
-                      readOnly 
-                      value={checkInUrl} 
-                      className="bg-gray-50 border p-2 rounded text-xs flex-1 truncate font-mono"
-                    />
-                    <button 
-                      onClick={() => navigator.clipboard.writeText(checkInUrl)}
-                      className="bg-gray-100 px-3 py-1 rounded text-xs hover:bg-gray-200"
-                    >
-                      Copy
-                    </button>
-                  </div>
-                </div>
+              <p className="text-4xl font-black tracking-[0.3em] text-white mb-2">{session.class_code}</p>
+              <p className="text-[9px] text-gray-500 uppercase tracking-widest mb-10">Access Key</p>
+              
+              <div className="w-full space-y-4">
+                <button 
+                  onClick={() => navigator.clipboard.writeText(checkInUrl)}
+                  className="w-full btn-metallic p-4 text-[9px] uppercase tracking-widest font-bold"
+                >
+                  Copy Standard Link
+                </button>
+                <button 
+                  onClick={() => navigator.clipboard.writeText(zoomOnlyUrl)}
+                  className="w-full bg-white text-black p-4 text-[9px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all shadow-[0_0_15px_rgba(255,255,255,0.1)]"
+                >
+                  Copy Zoom-Only Link
+                </button>
               </div>
             </div>
           </div>
 
-          <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-              <div className="p-6 border-b flex justify-between items-center bg-white">
-                <h2 className="text-lg font-semibold flex items-center gap-2">
-                  <ClipboardList className="w-5 h-5 text-green-500" />
-                  Attendance Records
+          <div className="lg:col-span-2">
+            <div className="bg-black border border-white/10 overflow-hidden shadow-2xl">
+              <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
+                <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 flex items-center gap-2">
+                  <ClipboardList className="w-4 h-4" /> Signal Logs
                 </h2>
-                <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1">
-                  <Users className="w-4 h-4" /> {records.length} Present
+                <div className="text-[9px] font-bold text-white uppercase tracking-widest px-3 py-1 bg-white/5 border border-white/10 rounded">
+                  {records.length} Verified
                 </div>
               </div>
-              
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
-                  <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
+                  <thead className="bg-white/5 text-[8px] uppercase tracking-widest text-gray-500 border-b border-white/10">
                     <tr>
-                      <th className="px-6 py-3 font-semibold">Student Name</th>
-                      <th className="px-6 py-3 font-semibold flex items-center gap-1">
-                        <Globe className="w-3 h-3" /> IP Address
-                      </th>
-                      <th className="px-6 py-3 font-semibold">
-                        <div className="flex items-center gap-1">
-                          <Fingerprint className="w-3 h-3" /> Device ID (MAC Proxy)
-                        </div>
-                      </th>
-                      <th className="px-6 py-3 font-semibold">Time</th>
+                      <th className="px-6 py-5">Name</th>
+                      <th className="px-6 py-5">Origin_IP</th>
+                      <th className="px-6 py-5">Hardware_Hash</th>
+                      <th className="px-6 py-5">Time</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y">
+                  <tbody className="divide-y divide-white/5 text-[10px]">
                     {records.length === 0 ? (
-                      <tr>
-                        <td colSpan={4} className="px-6 py-12 text-center text-gray-400">
-                          No check-ins yet. Waiting for students...
-                        </td>
-                      </tr>
+                      <tr><td colSpan={4} className="px-6 py-20 text-center text-gray-700 uppercase tracking-widest font-bold">Listening for signals...</td></tr>
                     ) : (
                       records.map((record) => (
-                        <tr key={record.id} className="hover:bg-gray-50 transition-colors text-sm">
-                          <td className="px-6 py-4 font-medium text-gray-900">{record.student_name}</td>
-                          <td className="px-6 py-4 text-gray-500 font-mono text-xs">{record.ip_address}</td>
-                          <td className="px-6 py-4 text-gray-500 font-mono text-[10px] truncate max-w-[100px]">
-                            {record.device_id}
+                        <tr key={record.id} className="hover:bg-white/5 transition-colors">
+                          <td className="px-6 py-5 font-bold text-gray-200 uppercase tracking-wider">{record.student_name}</td>
+                          <td className="px-6 py-5 text-gray-600 font-mono">{record.ip_address}</td>
+                          <td className="px-6 py-5">
+                            <div className="text-gray-700 font-mono text-[7px] truncate max-w-[120px] uppercase" title={record.device_id}>
+                              {record.device_id}
+                            </div>
                           </td>
-                          <td className="px-6 py-4 text-gray-500">
-                            {new Date(record.created_at).toLocaleTimeString()}
-                          </td>
+                          <td className="px-6 py-5 text-gray-600">{new Date(record.created_at).toLocaleTimeString()}</td>
                         </tr>
                       ))
                     )}

@@ -2,9 +2,8 @@
 
 :root {
   --background: #000000;
-  --foreground: #ffffff;
-  --glass-bg: rgba(255, 255, 255, 0.05);
-  --glass-border: rgba(255, 255, 255, 0.1);
+  --foreground: #ffffff; /* Brighter white for bold text */
+  --accent: #9ca3af;
 }
 
 @theme inline {
@@ -15,69 +14,80 @@
 }
 
 body {
-  background-color: var(--background);
+  background-color: #000000;
   color: var(--foreground);
   font-family: var(--font-body), ui-monospace, monospace;
+  font-size: 1.1rem; /* Scaled up from default */
+  font-weight: 700; /* Bold by default */
+  line-height: 1.6;
 }
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading), sans-serif;
   letter-spacing: 0.05em;
-}
-
-.glass-panel {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-}
-
-.liquid-glass {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 0 20px rgba(255, 255, 255, 0.05);
-}
-
-.metallic-header {
-  background: linear-gradient(
-    135deg,
-    #2c2c2c 0%,
-    #4a4a4a 25%,
-    #7d7d7d 50%,
-    #4a4a4a 75%,
-    #2c2c2c 100%
-  );
   color: #ffffff;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-  border-bottom: 2px solid #555;
+  font-weight: 900; /* Extra bold for headings */
 }
 
-.metallic-text {
-  background: linear-gradient(
-    to bottom,
-    #ffffff 0%,
-    #a0a0a0 50%,
-    #ffffff 100%
-  );
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+h1 { font-size: 3rem; }
+h2 { font-size: 2rem; }
+h3 { font-size: 1.5rem; }
+
+/* 90% Transparent Grey Card */
+.glass-panel, .liquid-glass {
+  background-color: rgba(255, 255, 255, 0.05); /* Slightly brighter for visibility */
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
 }
 
-input, button {
+input, select, textarea {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  border-radius: 4px !important;
   font-family: var(--font-body);
+  font-weight: 800 !important;
+  font-size: 1.1rem !important;
+  padding: 1rem !important;
+}
+
+input:focus {
+  border-color: #ffffff !important;
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.1) !important;
+  outline: none;
 }
 
 .btn-metallic {
-  background: linear-gradient(to bottom, #444, #222);
-  border: 1px solid #555;
+  background: #ffffff;
+  color: #000000;
+  border-radius: 4px;
+  font-weight: 900;
+  font-size: 1.1rem;
+  padding: 1rem 2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
   transition: all 0.2s;
 }
 
 .btn-metallic:hover {
-  background: linear-gradient(to bottom, #555, #333);
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+  background: #e5e7eb;
+  transform: translateY(-2px);
 }
+
+.btn-metallic:active {
+  transform: translateY(0);
+}
+
+/* Global Border Radius Reduction */
+.rounded-2xl, .rounded-xl, .rounded-lg {
+  border-radius: 4px !important;
+}
+
+.rounded-full {
+  border-radius: 4px !important;
+}
+
+/* Force Bold on common utility classes */
+.text-sm { font-size: 1rem; font-weight: 700; }
+.text-xs { font-size: 0.9rem; font-weight: 700; }
+.text-\[9px\], .text-\[10px\], .text-\[8px\] { font-size: 0.85rem !important; font-weight: 800 !important; }
